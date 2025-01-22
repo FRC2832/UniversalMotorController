@@ -55,8 +55,6 @@ public class TalonFXMotor extends MotorControl {
     double scaleFactor = 1;
     boolean allowConfig;
 
-    public final PidConstants pidConstants;
-
     DoublePublisher statorPub;
 
     public TalonFXMotor(String motorName, int id) {
@@ -68,9 +66,8 @@ public class TalonFXMotor extends MotorControl {
     }
 
     public TalonFXMotor(String motorName, TalonFX motor, boolean logOnly) {
-        super(motorName);
+        super(motorName, logOnly, false);
         this.motor = motor;
-        allowConfig = !logOnly;
         
         configuration = new TalonFXConfiguration();
         cfg = motor.getConfigurator();
@@ -155,13 +152,7 @@ public class TalonFXMotor extends MotorControl {
         }
         
         motor.optimizeBusUtilization();
-
-        //we don't persist this PID table because the motor remembers the value
-        pidConstants = new PidConstants(motorName, false);
-        pidConstants.onChange(this::configurePid);
-
         statorPub = motorTable.getDoubleTopic("Stator Current").publish();
-
         
         //load data from the motor
         var statusCode = cfg.refresh(configuration);
@@ -175,7 +166,6 @@ public class TalonFXMotor extends MotorControl {
         pidConstants.kG = configuration.Slot0.kG;
         pidConstants.kVelMax = configuration.MotionMagic.MotionMagicCruiseVelocity;
         pidConstants.kAccelMax = configuration.MotionMagic.MotionMagicAcceleration;
-
         pidConstants.pushToNT();
 
         //set RPM constants

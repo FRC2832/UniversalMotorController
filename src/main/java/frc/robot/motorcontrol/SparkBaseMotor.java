@@ -2,6 +2,7 @@ package frc.robot.motorcontrol;
 
 import java.util.ArrayList;
 
+import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.revrobotics.REVLibError;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkBase;
@@ -11,6 +12,7 @@ import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkBase.Warnings;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.ClosedLoopConfig.ClosedLoopSlot;
 import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkFlexConfig;
@@ -26,7 +28,8 @@ class SparkBaseMotor extends MotorControl {
     private double scaleFactor;
 
     public SparkBaseMotor(String motorName, SparkBase motor, boolean logOnly) {
-        super(motorName);
+        //need to persist PID as there is no way to get the PID values from motor
+        super(motorName, logOnly, true);
         this.motor = motor;
         //don't retry config errors to boot faster
         motor.setCANMaxRetries(0);
@@ -64,7 +67,24 @@ class SparkBaseMotor extends MotorControl {
         // based on github searches
         cfg.encoder.quadratureMeasurementPeriod(10).quadratureAverageDepth(2);
 
+        //set RPM constants
+        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
+        cfg.closedLoop.i(0,ClosedLoopSlot.kSlot1);
+        cfg.closedLoop.d(0,ClosedLoopSlot.kSlot1);
+        cfg.closedLoop.velocityFF(0,ClosedLoopSlot.kSlot1);
+        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
+        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
+        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
+        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
+        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
+        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
+        //motor.get;
+
         var statusCode = motor.configure(cfg, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+
+        //load data from NT, as we can't get them from motor API
+        pidConstants.loadFromNT();
+        configurePid();
     }
 
     @Override
@@ -241,6 +261,26 @@ class SparkBaseMotor extends MotorControl {
 
     @Override
     public void configurePid() {
-        // TODO Auto-generated method stub
+        /*
+        var statusCode = cfg.refresh(configuration);
+        
+        configuration.Slot0.kP = pidConstants.kP;
+        configuration.Slot0.kI = pidConstants.kI;
+        configuration.Slot0.kD = pidConstants.kD;
+        configuration.Slot0.kV = pidConstants.kV;
+        configuration.Slot0.kA = pidConstants.kA;
+        configuration.Slot0.kS = pidConstants.kS;
+        configuration.Slot0.kG = pidConstants.kG;
+        configuration.Slot0.GravityType = GravityTypeValue.Elevator_Static;
+        //removed as part of phoenix6: iZone, iError
+
+        configuration.MotionMagic
+            .withMotionMagicCruiseVelocity(pidConstants.kVelMax)
+            .withMotionMagicAcceleration(pidConstants.kAccelMax);
+        //implement in future? withMotionMagicExpo_kV, kA
+        if(allowConfig) {
+            statusCode = cfg.apply(configuration);
+        }
+        */
     }   
 }

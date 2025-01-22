@@ -10,6 +10,7 @@ abstract class MotorControl implements IMotorControl {
     protected NetworkTable motorTable;
     protected String name;
     protected boolean atSetpoint = false;
+    protected boolean allowConfig;
 
     private DoublePublisher supplyVoltagePub;
     private DoublePublisher supplyCurrentPub;
@@ -29,8 +30,16 @@ abstract class MotorControl implements IMotorControl {
     private StringPublisher stickyPub;
     private StringPublisher versionPub;
 
-    public MotorControl(String name) {
+    public final PidConstants pidConstants;
+
+    public MotorControl(String name, boolean logOnly, boolean persistPid) {
         this.name = name;
+        allowConfig = !logOnly;
+
+        //we don't persist this PID table because the motor remembers the value
+        pidConstants = new PidConstants(name, persistPid);
+        pidConstants.onChange(this::configurePid);
+
         //add motor to the list
         MotorControls.add(this);
         motorTable = NetworkTableInstance.getDefault().getTable("/Motors/" + name);
