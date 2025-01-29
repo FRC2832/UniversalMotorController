@@ -17,6 +17,10 @@ public interface IMotorControl {
      */
     void setVoltage(double voltage);
     void stopMotor(boolean coast);
+    /**
+     * Scale factors > 1 slow down the motor velocity (like 10:1 makes the output of 6000RPM down to 600)
+     * @param factor
+     */
     void setScaleFactor(double factor);
     void setInverted(boolean isInverted);
     /**
@@ -94,5 +98,7 @@ public interface IMotorControl {
     void configurePid();
 
     String getName();
+
+    void setSoftLimits(double back, double forward);
     /* soft limits, hard limits, elevator control, arm control, ramp rate, angle position control (with rollover), output min/max, pid min/max, follower */
 }

@@ -179,6 +179,12 @@ public class TalonFXMotor extends MotorControl {
         if(allowConfig) {
             statusCode = cfg.apply(configuration.Slot1);
         }
+
+        configuration.SoftwareLimitSwitch.ForwardSoftLimitEnable = false;
+        configuration.SoftwareLimitSwitch.ReverseSoftLimitEnable = false;
+        if(allowConfig) {
+            statusCode = cfg.apply(configuration.SoftwareLimitSwitch);
+        }
     }
 
     @Override
@@ -428,5 +434,18 @@ public class TalonFXMotor extends MotorControl {
     @Override
     protected void customLogging() {
         statorPub.set(getStatorCurrent());
+    }
+
+    @Override
+    public void setSoftLimits(double back, double forward) {
+        var statusCode = cfg.refresh(configuration.SoftwareLimitSwitch);
+        configuration.SoftwareLimitSwitch.ForwardSoftLimitThreshold = forward;
+        configuration.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
+        configuration.SoftwareLimitSwitch.ReverseSoftLimitThreshold = back;
+        configuration.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
+
+        if(allowConfig) {
+            statusCode = cfg.apply(configuration.SoftwareLimitSwitch);
+        }
     }
 }

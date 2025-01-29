@@ -2,21 +2,23 @@ package frc.robot.motorcontrol;
 
 import java.util.ArrayList;
 
-import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.revrobotics.REVLibError;
 import com.revrobotics.RelativeEncoder;
+import com.revrobotics.spark.ClosedLoopSlot;
 import com.revrobotics.spark.SparkBase;
+import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkBase.Faults;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkBase.Warnings;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
-import com.revrobotics.spark.config.ClosedLoopConfig.ClosedLoopSlot;
 import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkFlexConfig;
 
+import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 class SparkBaseMotor extends MotorControl {
@@ -27,10 +29,11 @@ class SparkBaseMotor extends MotorControl {
 
     private double scaleFactor;
 
-    public SparkBaseMotor(String motorName, SparkBase motor, boolean logOnly) {
+    public SparkBaseMotor(String motorName, SparkBase motor, boolean logOnly, DCMotor dcMotor) {
         //need to persist PID as there is no way to get the PID values from motor
         super(motorName, logOnly, true);
         this.motor = motor;
+
         //don't retry config errors to boot faster
         motor.setCANMaxRetries(0);
         cfg = new SparkFlexConfig();
@@ -67,18 +70,18 @@ class SparkBaseMotor extends MotorControl {
         // based on github searches
         cfg.encoder.quadratureMeasurementPeriod(10).quadratureAverageDepth(2);
 
-        //set RPM constants
-        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
-        cfg.closedLoop.i(0,ClosedLoopSlot.kSlot1);
-        cfg.closedLoop.d(0,ClosedLoopSlot.kSlot1);
-        cfg.closedLoop.velocityFF(0,ClosedLoopSlot.kSlot1);
-        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
-        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
-        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
-        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
-        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
-        cfg.closedLoop.p(0,ClosedLoopSlot.kSlot1);
-        //motor.get;
+        
+        //set RPM pid
+        final ClosedLoopSlot slot = ClosedLoopSlot.kSlot1;
+        cfg.closedLoop.p(0.0000001, slot);
+        cfg.closedLoop.i(0.0000001, slot);
+        cfg.closedLoop.d(0, slot);
+        cfg.closedLoop.velocityFF(12/(10*Units.radiansPerSecondToRotationsPerMinute(dcMotor.freeSpeedRadPerSec)), slot);
+        cfg.closedLoop.iZone(0, slot);
+        cfg.closedLoop.maxMotion.allowedClosedLoopError(0, slot);
+        cfg.closedLoop.maxMotion.maxVelocity(0, slot);
+        cfg.closedLoop.maxMotion.maxAcceleration(0, slot);
+        //missing: kS, kG, kA
 
         var statusCode = motor.configure(cfg, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
 
@@ -114,7 +117,7 @@ class SparkBaseMotor extends MotorControl {
         scaleFactor = 1/factor;
         cfg.encoder
           .positionConversionFactor(scaleFactor)
-          .velocityConversionFactor(scaleFactor / 60);
+          .velocityConversionFactor(scaleFactor);
         var statusCode = motor.configure(cfg, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
     }
 
@@ -211,17 +214,17 @@ class SparkBaseMotor extends MotorControl {
 
     @Override
     public void setRpm(double rpm) {
-        // TODO Auto-generated method stub
+        pid.setReference(rpm, ControlType.kVelocity, ClosedLoopSlot.kSlot1);
     }
 
     @Override
     public void setVelocity(double velocity) {
-        // TODO Auto-generated method stub
+        pid.setReference(velocity, ControlType.kMAXMotionVelocityControl);
     }
 
     @Override
     public void setPosition(double position) {
-        // TODO Auto-generated method stub
+        pid.setReference(position, ControlType.kMAXMotionPositionControl);
     }
 
     @Override
@@ -261,26 +264,27 @@ class SparkBaseMotor extends MotorControl {
 
     @Override
     public void configurePid() {
-        /*
-        var statusCode = cfg.refresh(configuration);
-        
-        configuration.Slot0.kP = pidConstants.kP;
-        configuration.Slot0.kI = pidConstants.kI;
-        configuration.Slot0.kD = pidConstants.kD;
-        configuration.Slot0.kV = pidConstants.kV;
-        configuration.Slot0.kA = pidConstants.kA;
-        configuration.Slot0.kS = pidConstants.kS;
-        configuration.Slot0.kG = pidConstants.kG;
-        configuration.Slot0.GravityType = GravityTypeValue.Elevator_Static;
-        //removed as part of phoenix6: iZone, iError
+        final ClosedLoopSlot slot = ClosedLoopSlot.kSlot0;
 
-        configuration.MotionMagic
-            .withMotionMagicCruiseVelocity(pidConstants.kVelMax)
-            .withMotionMagicAcceleration(pidConstants.kAccelMax);
-        //implement in future? withMotionMagicExpo_kV, kA
-        if(allowConfig) {
-            statusCode = cfg.apply(configuration);
-        }
-        */
-    }   
+        cfg.closedLoop.p(pidConstants.kP, slot);
+        cfg.closedLoop.i(pidConstants.kI, slot);
+        cfg.closedLoop.d(pidConstants.kD, slot);
+        cfg.closedLoop.velocityFF(pidConstants.kV, slot);
+        cfg.closedLoop.iZone(pidConstants.kiZone, slot);
+        cfg.closedLoop.maxMotion.allowedClosedLoopError(pidConstants.kiError, slot);
+        cfg.closedLoop.maxMotion.maxVelocity(pidConstants.kVelMax, slot);
+        cfg.closedLoop.maxMotion.maxAcceleration(pidConstants.kAccelMax, slot);
+        //missing: kS, kG, kA
+
+        var statusCode = motor.configure(cfg, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+    }
+
+    @Override
+    public void setSoftLimits(double back, double forward) {
+        cfg.softLimit.forwardSoftLimit(forward);
+        cfg.softLimit.forwardSoftLimitEnabled(true);
+        cfg.softLimit.reverseSoftLimit(back);
+        cfg.softLimit.reverseSoftLimitEnabled(true);
+        var statusCode = motor.configure(cfg, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+    }
 }
