@@ -7,7 +7,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.motorcontrol.IMotorControl;
-import frc.robot.motorcontrol.SparkFlexMotor;
 import frc.robot.motorcontrol.SparkMaxMotor;
 import frc.robot.motorcontrol.TalonFXMotor;
 
